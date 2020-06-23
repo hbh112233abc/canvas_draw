@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>涂鸦</title>
+        <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black">
+        <meta name="format-detection" content="telephone=no">
+        <meta name="description" content="涂鸦">
+        <style>
+            *{
+                padding:0;margin:0;
+            }
+            li{
+                list-style-type:none;
+            }
+            html,body{
+                height:100%;
+             }
+            .content-page{
+                min-width:1500px;
+                min-height: 100%;
+                background:#f6f6f6;
+            }
+            #page{
+                position:relative;
+                width:1200px;
+                margin:0 auto;
+                border-top:1px solid rgba(0,0,0,0)
+            }
+            h3{
+                position: relative;
+                margin:40px 0;
+                color:#ff8e5d;
+                font-size:30px;
+                text-align:center;
+            }
+            #content-iframe{
+                width:100%;
+                background: #ccc;
+                min-height: 800px;
+                border:none;
+
+            }
+            #canvas{
+                position:absolute;
+                left:0;
+                top:0;
+                z-index:100;
+                cursor:default;
+                top:120px;
+                left:50%;
+                transform:translate(-50%,0);
+                display: none;/*canvas刚进来是隐藏的，需要选颜色激活*/
+            }
+            .right-bar{
+                width:100px;
+                position: absolute;
+                right:-120px;
+                top:120px;
+                color:#000;
+                z-index:1;
+            }
+            .word{
+                font-size:24px;
+                font-family:FredokaOne-Regular;
+                color:rgba(255,142,93,1);
+                text-align:center;
+            }
+            .right-bar>span{
+                display: block;
+                width:90px;
+                height:40px;
+                color:#fff;
+                font-size:16px;
+                padding:0;
+                line-height: 40px;
+                border:none;
+                background: #FF8E5D;
+                margin:18px auto;
+                text-align: center;
+                cursor: pointer;
+            }
+            .btn-active{background:#ED723D !important}
+            #color{
+                padding-left:8px;
+                margin-top:10px;
+            }
+             #color>i{
+                position:relative;
+                display:inline-block;
+                width:34px;
+                height:34px;
+                border-radius: 50%;
+                margin-right:8px;
+                margin-bottom:5px;
+                border:none;
+                cursor: pointer;
+                z-index:50;
+            }
+            .color-active{
+                position:absolute;
+                top:50%;
+                left:50%;
+                transform:translate(-50%,-50%);
+
+                display: block;
+                border: 1px solid #FF8E5D;
+                border-radius: 50%;
+                width:40px;
+                height:40px;
+                z-index:40;
+                display: none;
+            }
+            .i1{
+                background:#DF4BFF;
+            }
+            .i2{
+                background:#9CCB68;
+            }
+            .i3{
+                background:#3DC1FF;
+            }
+            .i4{
+                background:#FFD338;
+            }
+            .i5{
+                background:#FF6262;
+            }
+            .i6{
+                background: #000000;
+            }
+        </style>
+    </head>
+    <body>
+    <div class="content-page">
+        <div id="page">
+            <h3>
+                涂鸦
+            </h3>
+            <iframe id="content-iframe" :src="iframeUrl">
+
+            </iframe>
+            <div class="right-bar">
+                <div class="word">color</div>
+                <div id="color">
+                    <i class="i1"><span class="color-active"></span></i>
+                    <i class="i2"><span class="color-active"></span></i>
+                    <i class="i3"><span class="color-active"></span></i>
+                    <i class="i4"><span class="color-active"></span></i>
+                    <i class="i5"><span class="color-active"></span></i>
+                    <i class="i6"><span class="color-active"></span></i>
+                </div>
+
+                <span id="eraser">橡皮擦</span>
+                <span id="revocation">撤销</span>
+                <span id="clear">清除</span>
+                <span id="hide" class="btn-active">关闭</span>
+            </div>
+        </div>
+
+        <canvas id="canvas" width="740" height="420">您的<u>浏览器</u>不支持 canvas 标签</canvas>
+
+    </div>
+    <script type="text/javascript">
+        var paint={
+            load:function(){
+                this.x=[];//记录鼠标移动是的X坐标
+                this.y=[];//记录鼠标移动是的Y坐标
+                this.clickDrag=[];
+                this.lock=false;//鼠标移动前，判断鼠标是否按下
+                this.isEraser=false;
+                this.storageColor="#f00";
+                this.eraserRadius=15;//擦除半径值
+                this.color=["#DF4BFF","#9CCB68","#3DC1FF","#FFD338","#FF6262","#000000"];//画笔颜色
+                this.$=function(id){return typeof id=="string"?document.getElementById(id):id;};
+                this.canvas=this.$("canvas");
+                this.canvas.width=this.$('content-iframe').offsetWidth;//设定canvas的宽度
+                this.canvas.height=this.$('content-iframe').offsetHeight;//设定canvas的高度
+                if (!this.canvas.getContext) {
+                    alert("您的浏览器不支持 canvas 标签");
+                    return;
+                }
+                this.cxt=this.canvas.getContext('2d');
+                this.cxt.lineJoin = "round";//context.lineJoin - 指定两条线段的连接方式
+                this.cxt.lineWidth = 5;//线条的宽度
+                this.iptClear=this.$("clear");
+                this.revocation=this.$("revocation");
+                this.hide = this.$('hide');
+                this.eraser = this.$('eraser');
+
+                this.colorSpan = this.$('color').getElementsByTagName('span');//颜色的外框的span集合
+                this.imgArr = [];//保存每个状态,撤销的时候用到
+                this.touch =("createTouch" in document);//判定是否为手持设备
+                this.StartEvent = this.touch ? "touchstart" : "mousedown";//支持触摸式使用相应的事件替代
+                this.MoveEvent = this.touch ? "touchmove" : "mousemove";
+                this.EndEvent = this.touch ? "touchend" : "mouseup";
+                this.bind();
+            },
+            bind:function(){
+                var t=this;
+                this.hide.onclick = function(){
+                    t.canvas.style.display = 'none';
+                    t.eraser.className = "";
+                    t.hide.className  = 'btn-active'
+                    t.hideColorSpan();
+                }
+                /*清除画布*/
+                this.iptClear.onclick=function(){
+                    t.cxt.clearRect(0, 0, t.canvas.width, t.canvas.height-1);
+                };
+                /*鼠标按下事件，记录鼠标位置，并绘制，解锁lock，打开mousemove事件*/
+                this.canvas['on'+t.StartEvent]=function(e){
+                    // debugger;
+                    t.imgArr.push(t.cxt.getImageData(0, 0,t.canvas.width,t.canvas.height));
+                    var touch=t.touch ? e.touches[0] : e;
+                    var box = t.canvas.getBoundingClientRect();
+                    var _x = (touch.clientX - box.left) * t.canvas.width / box.width
+                    var _y = (touch.clientY - box.top) * t.canvas.height / box.height
+                    if(t.isEraser){
+                        t.resetEraser(_x,_y,touch);
+                    }else{
+                        t.movePoint(_x,_y);//记录鼠标位置
+                        t.drawPoint();//绘制路线
+                    }
+                    t.lock=true;
+                };
+                /*鼠标移动事件*/
+                this.canvas['on'+t.MoveEvent]=function(e){
+                    // console.log(t.touch);
+                    var touch=t.touch ? e.touches[0] : e;
+                    //var touch = e;
+                    if(t.lock){
+                        var touch=t.touch ? e.touches[0] : e;
+                        var box = t.canvas.getBoundingClientRect();
+                        var _x = (touch.clientX - box.left) * t.canvas.width / box.width
+                        var _y = (touch.clientY - box.top) * t.canvas.height / box.height
+                        if(t.isEraser){
+                            t.resetEraser(_x,_y,touch);
+                        }
+                        else{
+                            t.movePoint(_x,_y,true);//记录鼠标位置
+                            t.drawPoint();//绘制路线
+                        }
+                    }
+                };
+                this.canvas['on'+t.EndEvent]=function(e){
+                    /*重置数据*/
+                    t.lock=false;
+                    t.x=[];
+                    t.y=[];
+                    t.clickDrag=[];
+                    clearInterval(t.Timer);
+                    t.Timer=null;
+
+                };
+                this.revocation.onclick=function(){
+                    if(t.imgArr.length>0){
+                        t.cxt.putImageData(t.imgArr[t.imgArr.length-1], 0, 0);
+                        t.imgArr.pop();
+                    }
+
+                };
+                this.changeColor();
+                /*橡皮擦*/
+                this.$("eraser").onclick=function(e){
+                    if(t.hide.className ===''){
+                        t.hideColorSpan();//这里是
+                        t.isEraser=true;
+                        t.eraser.className = 'btn-active';
+                    }
+
+                };
+            },
+            movePoint:function(x,y,dragging){
+                // debugger;
+                /*将鼠标坐标添加到各自对应的数组里*/
+                this.x.push(x);
+                this.y.push(y);
+                this.clickDrag.push(y);
+            },
+            drawPoint:function(x,y,radius){
+                for(var i=0; i < this.x.length; i++){
+                    this.cxt.beginPath();//context.beginPath() , 准备绘制一条路径
+                    if(this.clickDrag[i] && i){
+                        //当是拖动而且i!=0时，从上一个点开始画线。
+                        this.cxt.moveTo(this.x[i-1], this.y[i-1]);//context.moveTo(x, y) , 新开一个路径，并指定路径的起点
+                    }else{
+                        this.cxt.moveTo(this.x[i]-1, this.y[i]);
+                    }
+                    this.cxt.lineTo(this.x[i], this.y[i]);//context.lineTo(x, y) , 将当前点与指定的点用一条笔直的路径连接起来
+                    this.cxt.closePath();//context.closePath() , 如果当前路径是打开的则关闭它
+                    this.cxt.stroke();//context.stroke() , 绘制当前路径
+                }
+            },
+            preventDefault:function(e){
+                /*阻止默认*/
+                var touch=this.touch ? e.touches[0] : e;
+                if(this.touch)touch.preventDefault();
+                else window.event.returnValue = false;
+            },
+            changeColor:function(){
+                /*为按钮添加事件*/
+                var t=this,iptNum=this.$("color").getElementsByTagName("i");
+                for(let i=0,l=iptNum.length;i<l;i++){
+                    //这里要么用let,要么用闭包
+                     iptNum[i].index=i;
+                     iptNum[i].onclick=function(){
+                        t.hideColorSpan();//隐藏所有颜色的选中
+                        t.colorSpan[i].style.display = 'block'//选中点击的颜色
+                        t.canvas.style.display = 'block';
+                        // debugger;
+                         t.cxt.save();
+                         t.cxt.strokeStyle = t.color[this.index];
+                         t.storageColor=t.color[this.index];
+                         t.$("hide").className = '';
+                         t.$("eraser").className = '';//清除橡皮擦选中状态
+                         t.cxt.strokeStyle = t.storageColor;
+                         t.isEraser=false;
+                     }
+                 }
+            },
+            resetEraser:function(_x,_y,touch){
+                var t=this;
+                //this.cxt.lineWidth = 30;
+                /*source-over 默认,相交部分由后绘制图形的填充(颜色,渐变,纹理)覆盖,全部浏览器通过*/
+                t.cxt.globalCompositeOperation = "destination-out";
+                t.cxt.beginPath();
+                t.cxt.arc(_x, _y, t.eraserRadius, 0, Math.PI * 2);
+                t.cxt.strokeStyle = "rgba(250,250,250,0)";
+                t.cxt.fill();
+                t.cxt.globalCompositeOperation = "source-over"
+            },
+            hideColorSpan:function(){
+                //隐藏颜色的选中状态
+                for(var i =0,length = this.colorSpan.length;i<length;i++){
+                    this.colorSpan[i].style.display =  'none'
+                }
+            }
+
+
+        };
+        paint.load();
+    </script>
+ </body>
+ </html>
