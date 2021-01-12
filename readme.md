@@ -103,3 +103,17 @@
 [https://www.jianshu.com/p/f27b67803e00](https://www.jianshu.com/p/f27b67803e00)
 ![](images/android_canvas.webp.jpg)
 > 拥有图形,涂鸦,马赛克功能,不会安卓不做演示了,会的自己看博文及源码
+
+## 8 原生js和canvas写的一个移动端图片编辑器
+[https://github.com/lijibing01/picture_edit](https://github.com/lijibing01/picture_edit)
+#### 功能点
+- 涂鸦
+- 文字
+- 撤回
+- 清屏
+#### 不足之处
+- 涂鸦不支持笔触及颜色(可能需要进一步开发)
+- 文字样式单一(背景白色,不是透明背景)
+- 撤销无法撤销文字
+#### 演示地址
+[http://www.xiaomooo.cn:8080/dist/](http://www.xiaomooo.cn:8080/dist/)
